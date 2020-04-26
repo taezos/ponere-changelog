@@ -3,25 +3,32 @@ module UmuChangelog.Capability.Git
   , getLatestTagImpl
   ) where
 
+import           Import
+-- git
 import           Data.Git
 import           Data.Git.Ref
 import           Data.Git.Storage
+-- text
 import qualified Data.Text        as T
-import           Import
 
 class Monad m => ManageGit m where
-  getLatestTag :: m Text
+  getLatestTag :: m ( Either GitError Text )
 
-localRepo :: MonadIO m => ( Git SHA1 -> IO Text ) -> m Text
+localRepo :: MonadIO m => ( Git SHA1 -> IO ( Either GitError Text ) ) -> m ( Either GitError Text )
 localRepo filePath = liftIO $ do
   mFilePath <- findRepoMaybe
   case mFilePath of
-    Nothing -> pure "No repo"
+    Nothing -> pure $ Left NoRepoDetected
     Just _  -> withCurrentRepo filePath
 
-getLatestTagImpl :: ( MonadIO m, ManageGit m ) => m Text
-getLatestTagImpl = liftIO $ localRepo $ \git -> do
-  list <- tagList git
+data GitError
+  = NoTagsCreated
+  | NoRepoDetected
+  deriving ( Eq, Show )
+
+getLatestTagImpl :: ( MonadIO m, ManageGit m ) => m ( Either GitError Text )
+getLatestTagImpl = localRepo $ \git -> do
+  list <- liftIO $ tagList git
   if null list
-    then pure $ "No Tags created"
-    else pure . T.pack . refNameRaw . last . fromList $ toList list
+    then pure $ Left NoTagsCreated
+    else pure . Right . T.pack . refNameRaw . last . fromList $ toList list

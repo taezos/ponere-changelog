@@ -5,7 +5,8 @@ let
   inherit (nixpkgs) pkgs;
 
   f = { mkDerivation, base, bytestring, git, microlens, mtl, stdenv
-      , text, transformers, system-filepath, relude, ansi-terminal, optparse-applicative
+      , text, transformers, system-filepath, relude, ansi-terminal
+      , optparse-applicative, file-embed, time
       }:
       mkDerivation {
         pname = "umu-changelog";
@@ -15,7 +16,7 @@ let
         isExecutable = true;
         libraryHaskellDepends = [
           base bytestring git microlens mtl text transformers system-filepath
-          relude ansi-terminal optparse-applicative
+          relude ansi-terminal optparse-applicative file-embed time
         ];
         executableHaskellDepends = [ base ];
         doHaddock = false;

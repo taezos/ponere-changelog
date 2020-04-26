@@ -2,11 +2,16 @@
 module UmuChangelog where
 
 import           Import
+-- lens
+import           Lens.Micro
 -- opt-parse
 import           Options.Applicative
 -- umu-changelog
+import           UmuChangelog.Capability.Changelog
 import           UmuChangelog.Capability.Git
+import           UmuChangelog.Capability.Log
 import           UmuChangelog.Command
+import           UmuChangelog.Log
 
 newtype AppM a
   = AppM
@@ -25,11 +30,33 @@ startApp = do
   where
     run :: Command -> AppM ()
     run comm = case comm of
-      CommandUpdate  -> undefined
-      CommandCurrent -> undefined
+      CommandUpdate  -> do
+        eTag <- getLatestTag
+        case eTag of
+          Left err  -> logError $ show err
+          Right tag -> do
+            logInfo "Appended tag to CHANGELOG.md"
+            appendTag tag
+      CommandCurrent -> putStrLn "current"
 
-instance ManageGit ( AppM ) where
+instance ManageGit AppM where
   getLatestTag = getLatestTagImpl
+
+instance ManageChangelog AppM where
+  appendTag = appendTagImpl
+
+instance LogMessage AppM where
+  logMessage l = case l ^. logReason of
+    Info  -> logMessageImpl l Info
+    Debug -> logMessageImpl l Debug
+    Error -> logMessageImpl l Error
+    Warn  -> logMessageImpl l Warn
+
+logMessageImpl :: MonadIO m => Log -> LogReason -> m ()
+logMessageImpl l logR = mkTerminalLog
+  ( l ^. logMsg . logMessageText )
+  logR
+  ( l ^. logMsg . logMessageHeader )
 
 showHelpOnErrorExecParser :: ParserInfo a -> IO a
 showHelpOnErrorExecParser = customExecParser ( prefs showHelpOnError )
