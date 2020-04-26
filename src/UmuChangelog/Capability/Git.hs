@@ -1,4 +1,7 @@
-module UmuChangelog.Capability.Git where
+module UmuChangelog.Capability.Git
+  ( ManageGit(..)
+  , getLatestTagImpl
+  ) where
 
 import           Data.Git
 import           Data.Git.Ref
@@ -16,9 +19,9 @@ localRepo filePath = liftIO $ do
     Nothing -> pure "No repo"
     Just _  -> withCurrentRepo filePath
 
-getLatestTagImpl :: MonadIO m => m Text
-getLatestTagImpl = localRepo $ \git -> do
+getLatestTagImpl :: ( MonadIO m, ManageGit m ) => m Text
+getLatestTagImpl = liftIO $ localRepo $ \git -> do
   list <- tagList git
   if null list
     then pure $ "No Tags created"
-    else pure $ T.pack $ refNameRaw $ last $ fromList $ toList list
+    else pure . T.pack . refNameRaw . last . fromList $ toList list
