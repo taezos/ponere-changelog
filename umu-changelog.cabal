@@ -23,7 +23,6 @@ library
                      , UmuChangelog.Command
                      , UmuChangelog.Log
                      , UmuChangelog.Capability.Log
-                     , UmuChangelog.Capability.Command
                      , UmuChangelog.Capability.Git
                      , UmuChangelog.Capability.Changelog
                      , Paths_umu_changelog

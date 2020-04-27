@@ -7,15 +7,20 @@ import           Paths_umu_changelog (version)
 
 data Command
   = CommandUpdate
-  | CommandCurrent
+  | CommandRead
   deriving ( Show )
 
 parseCommand :: Parser Command
 parseCommand = subparser $
-  ( command "update" $ parseCommandUpdate `withInfo` "Update CHANGELOG file")
+  ( command "update" $ parseCommandUpdate `withInfo` "Update CHANGELOG file" )
+  <>
+  ( command "read" $  parseCommandCurrent `withInfo` "Render CHANGELOG file" )
 
 parseCommandUpdate :: Parser Command
 parseCommandUpdate = pure CommandUpdate
+
+parseCommandCurrent :: Parser Command
+parseCommandCurrent = pure CommandRead
 
 parseVersion :: Parser ( a -> a )
 parseVersion =

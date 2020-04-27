@@ -1,6 +1,7 @@
 module UmuChangelog.Capability.Changelog
   ( ManageChangelog (..)
   , appendTagImpl
+  , readLogImpl
   ) where
 
 import           Import
@@ -11,13 +12,18 @@ import           Data.Time.Clock
 
 class Monad m => ManageChangelog m where
   appendTag :: Text -> m ()
+  readLog :: m ()
 
 appendTagImpl :: ( MonadIO m, ManageChangelog m ) => Text -> m ()
 appendTagImpl tag = do
   tagTxt <- formatTag tag
   liftIO $ T.appendFile "./CHANGELOG.md" tagTxt
+  where
+    formatTag :: MonadIO m => Text -> m Text
+    formatTag t = do
+      currTime <- liftIO getCurrentTime
+      pure $ "\n## " <> t <> " -- " <> ( show $ utctDay currTime )
 
-formatTag :: MonadIO m => Text -> m Text
-formatTag t = do
-  currTime <- liftIO getCurrentTime
-  pure $ "\n## " <> t <> " -- " <> ( show $ utctDay currTime )
+readLogImpl :: ( MonadIO m, ManageChangelog m ) => m ()
+readLogImpl =
+  liftIO $ T.putStrLn =<< T.readFile "./CHANGELOG.md"

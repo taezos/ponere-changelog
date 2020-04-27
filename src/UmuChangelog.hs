@@ -37,13 +37,14 @@ startApp = do
           Right tag -> do
             logInfo "Appended tag to CHANGELOG.md"
             appendTag tag
-      CommandCurrent -> putStrLn "current"
+      CommandRead -> readLog
 
 instance ManageGit AppM where
   getLatestTag = getLatestTagImpl
 
 instance ManageChangelog AppM where
   appendTag = appendTagImpl
+  readLog = readLogImpl
 
 instance LogMessage AppM where
   logMessage l = case l ^. logReason of
