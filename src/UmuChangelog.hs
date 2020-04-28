@@ -2,6 +2,8 @@
 module UmuChangelog where
 
 import           Import
+-- text
+import qualified Data.Text.Encoding                as TE
 -- lens
 import           Lens.Micro
 -- opt-parse
@@ -35,16 +37,21 @@ startApp = do
         case eTag of
           Left err  -> logError $ show err
           Right tag -> do
-            logInfo "Appended tag to CHANGELOG.md"
+            mCommitMsg <- getLatestCommitMsg
             appendTag tag
-      CommandRead -> readLog
+            appendHint ( maybe "" TE.decodeUtf8 mCommitMsg )
+            logInfo "Appended tag to CHANGELOG.md"
+      CommandRead -> do
+        readLog
 
 instance ManageGit AppM where
   getLatestTag = getLatestTagImpl
+  getLatestCommitMsg = getLatestCommitMsgImpl
 
 instance ManageChangelog AppM where
   appendTag = appendTagImpl
   readLog = readLogImpl
+  appendHint = appendHintImpl
 
 instance LogMessage AppM where
   logMessage l = case l ^. logReason of

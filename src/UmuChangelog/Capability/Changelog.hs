@@ -2,6 +2,7 @@ module UmuChangelog.Capability.Changelog
   ( ManageChangelog (..)
   , appendTagImpl
   , readLogImpl
+  , appendHintImpl
   ) where
 
 import           Import
@@ -12,7 +13,21 @@ import           Data.Time.Clock
 
 class Monad m => ManageChangelog m where
   appendTag :: Text -> m ()
+  appendHint :: Text -> m ()
   readLog :: m ()
+
+appendHintImpl :: ( MonadIO m, ManageChangelog m ) => Text -> m ()
+appendHintImpl hint = do
+  liftIO $ T.appendFile "./CHANGELOG.md" ( formatHint hint )
+  where
+    formatHint :: Text -> Text
+    formatHint h = unlines
+      [ ""
+      , "<--! Hint, DELETE THIS BEFORE COMMITING:"
+      , "  " <> h
+      , "-->"
+      ]
+
 
 appendTagImpl :: ( MonadIO m, ManageChangelog m ) => Text -> m ()
 appendTagImpl tag = do
