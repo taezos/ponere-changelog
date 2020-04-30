@@ -1,19 +1,19 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-module UmuChangelog where
+module PonereChangelog where
 
 import           Import
 -- text
-import qualified Data.Text.Encoding                as TE
+import qualified Data.Text.Encoding                   as TE
 -- lens
 import           Lens.Micro
 -- opt-parse
 import           Options.Applicative
 -- umu-changelog
-import           UmuChangelog.Capability.Changelog
-import           UmuChangelog.Capability.Git
-import           UmuChangelog.Capability.Log
-import           UmuChangelog.Command
-import           UmuChangelog.Log
+import           PonereChangelog.Capability.Changelog
+import           PonereChangelog.Capability.Git
+import           PonereChangelog.Capability.Log
+import           PonereChangelog.Command
+import           PonereChangelog.Log
 
 newtype AppM a
   = AppM

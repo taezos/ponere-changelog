@@ -1,7 +1,7 @@
-module UmuChangelog.Capability.Log where
+module PonereChangelog.Capability.Log where
 
 import           Import
-import           UmuChangelog.Log
+import           PonereChangelog.Log
 
 class Monad m => LogMessage m where
   logMessage :: Log -> m ()

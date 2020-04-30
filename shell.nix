@@ -9,7 +9,7 @@ let
       , optparse-applicative, file-embed, time
       }:
       mkDerivation {
-        pname = "umu-changelog";
+        pname = "ponere-changelog";
         version = "0.1.0.0";
         src = ./.;
         isLibrary = true;

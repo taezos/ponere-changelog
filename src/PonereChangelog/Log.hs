@@ -1,4 +1,4 @@
-module UmuChangelog.Log
+module PonereChangelog.Log
   ( LogReason (..)
   , Log
   , mkLog

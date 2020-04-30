@@ -1,6 +1,6 @@
 module Main where
 
-import           UmuChangelog
+import           PonereChangelog
 
 main :: IO ()
 main = startApp

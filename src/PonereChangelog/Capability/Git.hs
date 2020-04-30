@@ -1,5 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
-module UmuChangelog.Capability.Git
+module PonereChangelog.Capability.Git
   ( ManageGit(..)
   , getLatestTagImpl
   , getLatestCommitMsgImpl

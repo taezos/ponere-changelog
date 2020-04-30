@@ -1,9 +1,9 @@
-module UmuChangelog.Command where
+module PonereChangelog.Command where
 
-import           Data.Version        (showVersion)
+import           Data.Version           (showVersion)
 import           Import
 import           Options.Applicative
-import           Paths_umu_changelog (version)
+import           Paths_ponere_changelog (version)
 
 data Command
   = CommandUpdate

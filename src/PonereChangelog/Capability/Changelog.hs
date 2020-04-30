@@ -1,4 +1,4 @@
-module UmuChangelog.Capability.Changelog
+module PonereChangelog.Capability.Changelog
   ( ManageChangelog (..)
   , appendTagImpl
   , readLogImpl
