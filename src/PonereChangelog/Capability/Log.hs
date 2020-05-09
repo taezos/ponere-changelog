@@ -1,6 +1,15 @@
-module PonereChangelog.Capability.Log where
+module PonereChangelog.Capability.Log
+  ( LogMessage (..)
+  , log
+  , logInfo
+  , logWarn
+  , logDebug
+  , logError
+  , logMessageImpl
+  ) where
 
 import           Import
+import           Lens.Micro
 import           PonereChangelog.Log
 
 class Monad m => LogMessage m where
@@ -20,3 +29,9 @@ logDebug = log Debug
 
 logError :: ( MonadIO m, LogMessage m ) => Text -> m ()
 logError = log Error
+
+logMessageImpl :: MonadIO m => Log -> LogReason -> m ()
+logMessageImpl l logR = mkTerminalLog
+  ( l ^. logMsg . logMessageText )
+  logR
+  ( l ^. logMsg . logMessageHeader )

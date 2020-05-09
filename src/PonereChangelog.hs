@@ -2,23 +2,23 @@
 module PonereChangelog where
 
 import           Import
--- text
-import qualified Data.Text.Encoding                   as TE
 -- lens
 import           Lens.Micro
 -- opt-parse
 import           Options.Applicative
--- umu-changelog
+-- ponere-changelog
 import           PonereChangelog.Capability.Changelog
 import           PonereChangelog.Capability.Git
 import           PonereChangelog.Capability.Log
 import           PonereChangelog.Command
 import           PonereChangelog.Log
+-- exceptions
+import           Control.Monad.Catch
 
 newtype AppM a
   = AppM
   { unAppM :: IO a
-  } deriving ( Functor, Applicative, Monad, MonadIO )
+  } deriving ( Functor, Applicative, Monad, MonadIO, MonadThrow )
 
 runAppM :: AppM a -> IO a
 runAppM app = unAppM app
@@ -36,13 +36,10 @@ startApp = do
         eRef <- getLatestRef
         case eRef of
           Left err  -> logError $ show err
-          Right ref -> do
-            eMsgs <- getCommitMsgsWithRef ref
-            case eMsgs of
-              Left err -> logError $ show err
-              Right commitMsgs -> do
-                appendTag ref
-                appendHint ( unlines $ TE.decodeUtf8 <$> commitMsgs )
+          Right ref -> either
+            ( logError . show )
+            ( appendTagAndHint ref )
+            =<< getCommitMsgsWithRef ref
       CommandRead -> readLog
 
 instance ManageGit AppM where
@@ -61,12 +58,6 @@ instance LogMessage AppM where
     Debug -> logMessageImpl l Debug
     Error -> logMessageImpl l Error
     Warn  -> logMessageImpl l Warn
-
-logMessageImpl :: MonadIO m => Log -> LogReason -> m ()
-logMessageImpl l logR = mkTerminalLog
-  ( l ^. logMsg . logMessageText )
-  logR
-  ( l ^. logMsg . logMessageHeader )
 
 showHelpOnErrorExecParser :: ParserInfo a -> IO a
 showHelpOnErrorExecParser = customExecParser ( prefs showHelpOnError )

@@ -3,10 +3,12 @@ module PonereChangelog.Capability.Changelog
   , appendTagImpl
   , readLogImpl
   , appendHintImpl
+  , appendTagAndHint
   ) where
 
 import           Import
 -- text
+import qualified Data.Text.Encoding             as TE
 import qualified Data.Text.IO                   as T
 -- time
 import           Data.Time.Clock
@@ -45,3 +47,10 @@ appendTagImpl tag = do
 readLogImpl :: ( MonadIO m, ManageChangelog m ) => m ()
 readLogImpl =
   liftIO $ T.putStrLn =<< T.readFile "./CHANGELOG.md"
+
+-------------------------
+-- helper
+-------------------------
+appendTagAndHint :: ManageChangelog m => Text -> [ ByteString ] -> m ()
+appendTagAndHint ref commitMsgs = appendTag ref
+  >> appendHint ( unlines $ TE.decodeUtf8 <$> commitMsgs )
