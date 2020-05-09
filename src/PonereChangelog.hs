@@ -33,20 +33,22 @@ startApp = do
     run :: Command -> AppM ()
     run comm = case comm of
       CommandUpdate  -> do
-        eTag <- getLatestTag
-        case eTag of
+        eRef <- getLatestRef
+        case eRef of
           Left err  -> logError $ show err
-          Right tag -> do
-            mCommitMsg <- getLatestCommitMsg
-            appendTag tag
-            appendHint ( maybe "" TE.decodeUtf8 mCommitMsg )
-            logInfo "Appended tag to CHANGELOG.md"
-      CommandRead -> do
-        readLog
+          Right ref -> do
+            eMsgs <- getCommitMsgsWithRef ref
+            case eMsgs of
+              Left err -> logError $ show err
+              Right commitMsgs -> do
+                appendTag ref
+                appendHint ( unlines $ TE.decodeUtf8 <$> commitMsgs )
+      CommandRead -> readLog
 
 instance ManageGit AppM where
-  getLatestTag = getLatestTagImpl
-  getLatestCommitMsg = getLatestCommitMsgImpl
+  getLatestRef = getLatestTagImpl
+  getCommitMsgWithRef = getCommitMsgWithRefImpl
+  getCommitMsgsWithRef = getCommitMsgsWithRefImpl
 
 instance ManageChangelog AppM where
   appendTag = appendTagImpl
