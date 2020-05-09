@@ -12,13 +12,11 @@ import           PonereChangelog.Capability.Git
 import           PonereChangelog.Capability.Log
 import           PonereChangelog.Command
 import           PonereChangelog.Log
--- exceptions
-import           Control.Monad.Catch
 
 newtype AppM a
   = AppM
   { unAppM :: IO a
-  } deriving ( Functor, Applicative, Monad, MonadIO, MonadThrow )
+  } deriving ( Functor, Applicative, Monad, MonadIO )
 
 runAppM :: AppM a -> IO a
 runAppM app = unAppM app
