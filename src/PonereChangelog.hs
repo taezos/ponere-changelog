@@ -25,7 +25,7 @@ startApp :: IO ()
 startApp = do
   comm <- showHelpOnErrorExecParser
     ( info ( helper <*> parseVersion <*> parseCommand )
-      ( fullDesc <> progDesc umuProgDesc <> header umuHeader ))
+      ( fullDesc <> progDesc ponereProgDesc <> header ponereHeader ))
   runAppM $ runCommand comm
   where
     runCommand :: Command -> AppM ()
@@ -64,8 +64,8 @@ instance LogMessage AppM where
 showHelpOnErrorExecParser :: ParserInfo a -> IO a
 showHelpOnErrorExecParser = customExecParser ( prefs showHelpOnError )
 
-umuProgDesc :: String
-umuProgDesc = "Use umu-changelog to manage the CHANGELOG.md"
+ponereProgDesc :: String
+ponereProgDesc = "Use ponere-changelog to manage the CHANGELOG.md"
 
-umuHeader :: String
-umuHeader = "umu-changelog: Manage CHANGELOG.md file"
+ponereHeader :: String
+ponereHeader = "ponere-changelog: Manage CHANGELOG.md file"
