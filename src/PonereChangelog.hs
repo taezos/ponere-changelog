@@ -26,22 +26,26 @@ startApp = do
   comm <- showHelpOnErrorExecParser
     ( info ( helper <*> parseVersion <*> parseCommand )
       ( fullDesc <> progDesc umuProgDesc <> header umuHeader ))
-  runAppM $ run comm
+  runAppM $ runCommand comm
   where
-    run :: Command -> AppM ()
-    run comm = case comm of
+    runCommand :: Command -> AppM ()
+    runCommand comm = case comm of
       CommandUpdate  -> do
-        eRef <- getLatestRef
-        case eRef of
-          Left err  -> logError $ show err
-          Right ref -> either
-            ( logError . show )
-            ( appendTagAndHint ref )
-            =<< getCommitMsgsWithRef ref
+        eRefBeforeLatest <- getRefNameBeforeLatest
+        eLatestRef <- getLatestRef
+        let eRefs = combineRefs eRefBeforeLatest eLatestRef
+        case eRefs of
+          Left err                             -> logError $ show err
+          Right ( refBeforeLatest, latestRef ) -> do
+            commits <- getCommitMsgsWithRef refBeforeLatest
+            either
+              ( logError . show )
+              ( appendTagAndHint latestRef ) commits
       CommandRead -> readLog
 
 instance ManageGit AppM where
   getLatestRef = getLatestTagImpl
+  getRefNameBeforeLatest = getRefNameBeforeLatestImpl
   getCommitMsgWithRef = getCommitMsgWithRefImpl
   getCommitMsgsWithRef = getCommitMsgsWithRefImpl
 

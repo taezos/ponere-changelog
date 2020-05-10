@@ -4,8 +4,10 @@ module PonereChangelog.Capability.Git
   , getLatestTagImpl
   , getCommitMsgWithRefImpl
   , getCommitMsgsWithRefImpl
+  , getRefNameBeforeLatestImpl
   , hush
   , GitError(..)
+  , combineRefs
   ) where
 
 import           Data.Either
@@ -24,6 +26,7 @@ import qualified Data.Text              as T
 
 class Monad m => ManageGit m where
   getLatestRef :: m ( Either GitError Text )
+  getRefNameBeforeLatest :: m ( Either GitError Text )
   getCommitMsgWithRef :: Text -> m ( Maybe ByteString )
   getCommitMsgsWithRef :: Text -> m ( Either GitError [ ByteString ] )
 
@@ -97,6 +100,23 @@ getLatestTagImpl = localRepo $ \git -> do
       | null l = Left NoTagsCreated
       | otherwise =  Right . T.pack . refNameRaw . last . fromList $ toList l
 
+-- | gets the ref name before the latest tag.
+getRefNameBeforeLatestImpl :: ( MonadIO m ) => m ( Either GitError Text )
+getRefNameBeforeLatestImpl = localRepo $ \git -> do
+  list <- liftIO $ tagList git
+  pure $ handler list
+  where
+    handler :: Set RefName -> Either GitError Text
+    handler l
+      | null l = Left NoTagsCreated
+      -- this drops the items except for the last 2 items in the list.
+      -- Then it takes the head of the list by using listToMaybe
+      | otherwise = Right
+        . maybe mempty ( T.pack . refNameRaw )
+        . listToMaybe
+        . drop ( ( length $ toList l ) - 2 )
+        $ toList l
+
 getCommitsWithRefImpl :: ( MonadIO m, ManageGit m ) => Text -> m ( Either GitError [ Commit SHA1 ] )
 getCommitsWithRefImpl ref = do
   commit <- fmap ( listToMaybe . commitParents ) <$> getLatestCommit ref
@@ -138,3 +158,9 @@ takeWhileInclusive :: ( a -> Bool ) -> [ a ] -> [ a ]
 takeWhileInclusive _ [] = []
 takeWhileInclusive predicate (x:xs) =
   x : if predicate x then takeWhileInclusive predicate xs else []
+
+combineRefs :: Either GitError Text -> Either GitError Text -> Either GitError ( Text, Text )
+combineRefs refNameBeforeLatest latestRef = do
+  refBeforeLatest <- refNameBeforeLatest
+  lRef <- latestRef
+  pure ( refBeforeLatest, lRef )
