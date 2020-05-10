@@ -19,5 +19,5 @@ Available commands:
 ## How it works
 
 It will retreive all the commit messages from the last tag all the way to `HEAD`,
-then renders it to `CHANGELOG.md` as hints. This can serve as clues on what to
+then together with the latest tag and date, renders it to `CHANGELOG.md` as hints. This can serve as clues on what to
 write on changelog.
