@@ -1,13 +1,17 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module PonereChangelog.Capability.Git
   ( ManageGit(..)
-  , getLatestTagImpl
+  , LatestRefName
+  , RefNameBeforeLatest
+  , GitError(..)
+  , getLatestRefNameImpl
   , getCommitMsgWithRefImpl
   , getCommitMsgsWithRefImpl
   , getRefNameBeforeLatestImpl
   , hush
-  , GitError(..)
   , combineRefs
+  , fromLatestRefName
+  , fromRefNameBeforeLatest
   ) where
 
 import           Data.Either
@@ -25,8 +29,8 @@ import           Data.Git.Types
 import qualified Data.Text              as T
 
 class Monad m => ManageGit m where
-  getLatestRef :: m ( Either GitError Text )
-  getRefNameBeforeLatest :: m ( Either GitError Text )
+  getLatestRef :: m ( Either GitError LatestRefName )
+  getRefNameBeforeLatest :: m ( Either GitError RefNameBeforeLatest )
   getCommitMsgWithRef :: Text -> m ( Maybe ByteString )
   getCommitMsgsWithRef :: Text -> m ( Either GitError [ ByteString ] )
 
@@ -89,43 +93,72 @@ retreiveAllCommits = localRepo $ \git -> do
 
     getTimeFromCommit = gitTimeUTC . personTime . commitAuthor
 
+newtype LatestRefName = LatestRefName Text
+  deriving ( Eq, Show )
+
+
+
+instance Semigroup LatestRefName where
+  ( LatestRefName ref ) <> ( LatestRefName ref' ) = LatestRefName ( ref <> ref' )
+
+instance Monoid LatestRefName where
+  mempty = LatestRefName mempty
+
 -- | get the latest ref name from the tag
-getLatestTagImpl :: ( MonadIO m, ManageGit m ) => m ( Either GitError Text )
-getLatestTagImpl = localRepo $ \git -> do
+getLatestRefNameImpl
+  :: ( MonadIO m, ManageGit m )
+  => m ( Either GitError LatestRefName )
+getLatestRefNameImpl = localRepo $ \git -> do
   list <- liftIO $ tagList git
   pure $ handler list
   where
-    handler :: Set RefName -> Either GitError Text
+    handler :: Set RefName -> Either GitError LatestRefName
     handler l
       | null l = Left NoTagsCreated
-      | otherwise =  Right . T.pack . refNameRaw . last . fromList $ toList l
+      | otherwise =  Right . LatestRefName . T.pack . refNameRaw . last . fromList $ toList l
+
+newtype RefNameBeforeLatest = RefNameBeforeLatest Text
+  deriving ( Eq, Show )
+
+instance Semigroup RefNameBeforeLatest where
+  ( RefNameBeforeLatest ref ) <> ( RefNameBeforeLatest ref' ) =
+    RefNameBeforeLatest ( ref <> ref' )
+
+instance Monoid RefNameBeforeLatest where
+  mempty = RefNameBeforeLatest mempty
 
 -- | gets the ref name before the latest tag.
-getRefNameBeforeLatestImpl :: ( MonadIO m ) => m ( Either GitError Text )
+getRefNameBeforeLatestImpl
+  :: MonadIO m
+  => m ( Either GitError RefNameBeforeLatest )
 getRefNameBeforeLatestImpl = localRepo $ \git -> do
   list <- liftIO $ tagList git
   pure $ handler list
   where
-    handler :: Set RefName -> Either GitError Text
+    handler :: Set RefName -> Either GitError RefNameBeforeLatest
     handler l
       | null l = Left NoTagsCreated
       -- this drops the items except for the last 2 items in the list.
       -- Then it takes the head of the list by using listToMaybe
       | otherwise = Right
-        . maybe mempty ( T.pack . refNameRaw )
+        . maybe mempty ( RefNameBeforeLatest . T.pack . refNameRaw )
         . listToMaybe
         . drop ( ( length $ toList l ) - 2 )
         $ toList l
 
-getCommitsWithRefImpl :: ( MonadIO m, ManageGit m ) => Text -> m ( Either GitError [ Commit SHA1 ] )
+getCommitsWithRefImpl
+  :: ( MonadIO m, ManageGit m )
+  => Text
+  -> m ( Either GitError [ Commit SHA1 ] )
 getCommitsWithRefImpl ref = do
-  commit <- fmap ( listToMaybe . commitParents ) <$> getLatestCommit ref
+  commit <- join <$> fmap ( listToMaybe . commitParents ) <$> getLatestCommit ref
   commits <- retreiveAllCommits
-  pure
-    $ takeWhileInclusive
-    (\c -> ( maybe mempty toHexString $ listToMaybe $ commitParents $ c ) /= ( maybe mempty toHexString $ join $ commit ))
-    <$>
-    commits
+  pure $ takeWhileInclusive ( whenCommitsNotMatch commit ) <$> commits
+  where
+    whenCommitsNotMatch :: Maybe ( Ref SHA1 ) -> Commit SHA1 -> Bool
+    whenCommitsNotMatch mCommit c =
+      ( maybe mempty toHexString $ listToMaybe $ commitParents $ c )
+      /= ( maybe mempty toHexString mCommit )
 
 getCommitMsgsWithRefImpl
   :: ( MonadIO m, ManageGit m )
@@ -148,7 +181,7 @@ getCommitMsgWithRefImpl refName =
   fmap commitMessage <$> getLatestCommit refName
 
 -------------------------------
--- utils
+-- utils & helpers
 -------------------------------
 hush :: Either e a -> Maybe a
 hush = either ( const Nothing ) Just
@@ -159,8 +192,17 @@ takeWhileInclusive _ [] = []
 takeWhileInclusive predicate (x:xs) =
   x : if predicate x then takeWhileInclusive predicate xs else []
 
-combineRefs :: Either GitError Text -> Either GitError Text -> Either GitError ( Text, Text )
+combineRefs
+  :: Either GitError RefNameBeforeLatest
+  -> Either GitError LatestRefName
+  -> Either GitError ( RefNameBeforeLatest, LatestRefName )
 combineRefs refNameBeforeLatest latestRef = do
   refBeforeLatest <- refNameBeforeLatest
   lRef <- latestRef
   pure ( refBeforeLatest, lRef )
+
+fromLatestRefName :: LatestRefName -> Text
+fromLatestRefName ( LatestRefName txt ) = txt
+
+fromRefNameBeforeLatest :: RefNameBeforeLatest -> Text
+fromRefNameBeforeLatest ( RefNameBeforeLatest txt ) = txt

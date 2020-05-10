@@ -37,14 +37,14 @@ startApp = do
         case eRefs of
           Left err                             -> logError $ show err
           Right ( refBeforeLatest, latestRef ) -> do
-            commits <- getCommitMsgsWithRef refBeforeLatest
+            commits <- getCommitMsgsWithRef ( fromRefNameBeforeLatest refBeforeLatest )
             either
               ( logError . show )
-              ( appendTagAndHint latestRef ) commits
+              ( appendTagAndHint ( fromLatestRefName latestRef ) ) commits
       CommandRead -> readLog
 
 instance ManageGit AppM where
-  getLatestRef = getLatestTagImpl
+  getLatestRef = getLatestRefNameImpl
   getRefNameBeforeLatest = getRefNameBeforeLatestImpl
   getCommitMsgWithRef = getCommitMsgWithRefImpl
   getCommitMsgsWithRef = getCommitMsgsWithRefImpl
