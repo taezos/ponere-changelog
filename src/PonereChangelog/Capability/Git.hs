@@ -14,9 +14,13 @@ module PonereChangelog.Capability.Git
   , fromRefNameBeforeLatest
   ) where
 
+
+import           Control.Exception      (evaluate)
 import           Data.Either
 import           Data.Ord
 import           Import
+-- text
+import qualified Data.Text              as T
 -- git
 import           Data.Git
 import qualified Data.Git.Monad         as GitMonad
@@ -25,8 +29,6 @@ import           Data.Git.Repository
 import           Data.Git.Storage
 import           Data.Git.Storage.Loose
 import           Data.Git.Types
--- text
-import qualified Data.Text              as T
 
 class Monad m => ManageGit m where
   getLatestRef :: m ( Either GitError LatestRefName )
@@ -57,22 +59,19 @@ getAllRefs
   => Git SHA1
   -> m [ Ref SHA1 ]
 getAllRefs git = do
-  prefixes <- liftIO $ looseEnumeratePrefixes (gitRepoPath git)
-  liftIO
-    $ fmap ( catMaybes . concat )
-    $ traverse prefixesToRefs prefixes
+  prefixes <- liftIO $ looseEnumeratePrefixes ( gitRepoPath git )
+  liftIO $ concat <$> traverse prefixesToRefs prefixes
   where
-    prefixesToRefs :: MonadIO m => String -> m [ Maybe ( Ref SHA1 ) ]
-    prefixesToRefs prefix = do
-      refs <- liftIO $ looseEnumerateWithPrefix ( gitRepoPath git ) prefix
-      traverse ( pure . Just ) refs
+    prefixesToRefs :: MonadIO m => String -> m [ Ref SHA1 ]
+    prefixesToRefs prefix =
+      liftIO $ looseEnumerateWithPrefix ( gitRepoPath git ) prefix
 
 -- | retreives all commits with the latest commit first.
 retreiveAllCommits :: MonadIO m => m ( Either GitError [ Commit SHA1 ] )
 retreiveAllCommits = localRepo $ \git -> do
   refs <- getAllRefs git
-  commits <- catMaybes <$> traverse ( getCommitMaybe git ) refs
-  pure $ handler commits
+  commits <- traverse ( ( evaluate =<< ) . getCommitMaybe git ) refs
+  pure $ handler ( catMaybes commits )
   where
     handler :: [ Commit SHA1 ] -> ( Either GitError [ Commit SHA1 ] )
     handler com
@@ -95,8 +94,6 @@ retreiveAllCommits = localRepo $ \git -> do
 
 newtype LatestRefName = LatestRefName Text
   deriving ( Eq, Show )
-
-
 
 instance Semigroup LatestRefName where
   ( LatestRefName ref ) <> ( LatestRefName ref' ) = LatestRefName ( ref <> ref' )
