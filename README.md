@@ -25,7 +25,11 @@ write on changelog.
 ## Installation with Cabal
 Clone the repo
 ```
+# github repo
 git clone https://github.com/taezos/ponere-changelog.git
+
+# taezos repo
+git clone https://taezos.org/taezos/ponere-changelog.git
 ```
 Build and Install
 ```
@@ -38,7 +42,11 @@ This will get installed in `~/.cabal/bin`
 ## Installation with Nix
 Clone the repo
 ```
+# github repo
 git clone https://github.com/taezos/ponere-changelog.git
+
+# taezos repo
+git clone https://taezos.org/taezos/ponere-changelog.git
 ```
 Install with nix
 ```
