@@ -21,6 +21,7 @@ library
   exposed-modules:     PonereChangelog
   other-modules:       Import
                      , PonereChangelog.Command
+                     , PonereChangelog.Response
                      , PonereChangelog.Log
                      , PonereChangelog.Capability.Log
                      , PonereChangelog.Capability.Git
@@ -34,7 +35,7 @@ library
                      , transformers
                      , mtl
                      , microlens
-                     , system-filepath
+                     , turtle
                      , ansi-terminal
                      , optparse-applicative
                      , file-embed

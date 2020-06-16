@@ -15,6 +15,13 @@ import           PonereChangelog.Log
 class Monad m => LogMessage m where
   logMessage :: Log -> m ()
 
+instance LogMessage IO where
+  logMessage l = case l ^. logReason of
+    Info  -> logMessageImpl l Info
+    Debug -> logMessageImpl l Debug
+    Error -> logMessageImpl l Error
+    Warn  -> logMessageImpl l Warn
+
 log :: ( MonadIO m, LogMessage m ) => LogReason -> Text -> m ()
 log reason = logMessage <=< mkLog reason
 

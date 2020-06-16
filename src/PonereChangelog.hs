@@ -1,7 +1,10 @@
+{-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module PonereChangelog where
 
 import           Import
+-- mtl
+import           Control.Monad.Except
 -- lens
 import           Lens.Micro
 -- opt-parse
@@ -12,49 +15,54 @@ import           PonereChangelog.Capability.Git
 import           PonereChangelog.Capability.Log
 import           PonereChangelog.Command
 import           PonereChangelog.Log
+import           PonereChangelog.Response
 
-newtype AppM a
+newtype AppM m a
   = AppM
-  { unAppM :: IO a
-  } deriving ( Functor, Applicative, Monad, MonadIO )
+  { unAppM :: ( ExceptT PonereError m ) a
+  } deriving ( Functor, Applicative, Monad, MonadIO, MonadError PonereError )
 
-runAppM :: AppM a -> IO a
-runAppM app = unAppM app
+runAppM :: MonadIO m => Command -> ExceptT PonereError m PonereResponse
+runAppM comm = unAppM $ runCommand comm
 
 startApp :: IO ()
 startApp = do
   comm <- showHelpOnErrorExecParser
     ( info ( helper <*> parseVersion <*> parseCommand )
       ( fullDesc <> progDesc ponereProgDesc <> header ponereHeader ))
-  runAppM $ runCommand comm
-  where
-    runCommand :: Command -> AppM ()
-    runCommand comm = case comm of
-      CommandUpdate  -> do
-        eRefBeforeLatest <- getRefNameBeforeLatest
-        eLatestRef <- getLatestRef
-        let eRefs = combineRefs eRefBeforeLatest eLatestRef
-        case eRefs of
-          Left err                             -> logError $ show err
-          Right ( refBeforeLatest, latestRef ) -> do
-            commits <- getCommitMsgsWithRef ( fromRefNameBeforeLatest refBeforeLatest )
-            either
-              ( logError . show )
-              ( appendTagAndHint ( fromLatestRefName latestRef ) ) commits
-      CommandRead -> readLog
+  res <- runExceptT $ runAppM comm
+  case res of
+    Left err  -> logError $ ponereErrorToText err
+    Right msg -> logInfo $ ponereResponseToText msg
 
-instance ManageGit AppM where
+runCommand :: MonadIO m => Command -> AppM m PonereResponse
+runCommand comm = case comm of
+  CommandUpdate  -> do
+    eRefBeforeLatest <- getRefNameBeforeLatest
+    eLatestRef <- getLatestRef
+    let eRefs = combineRefs eRefBeforeLatest eLatestRef
+    case eRefs of
+      Left err -> throwError err
+      Right ( refBeforeLatest, latestRef ) -> do
+        commits <- getCommitMsgsWithRef ( fromRefNameBeforeLatest refBeforeLatest )
+        either
+          throwError
+          ( appendTagAndHint ( fromLatestRefName latestRef ) )
+          commits
+  CommandRead -> readLog
+
+instance MonadIO m => ManageGit ( AppM m ) where
   getLatestRef = getLatestRefNameImpl
   getRefNameBeforeLatest = getRefNameBeforeLatestImpl
   getCommitMsgWithRef = getCommitMsgWithRefImpl
   getCommitMsgsWithRef = getCommitMsgsWithRefImpl
 
-instance ManageChangelog AppM where
+instance MonadIO m => ManageChangelog ( AppM m ) where
   appendTag = appendTagImpl
   readLog = readLogImpl
   appendHint = appendHintImpl
 
-instance LogMessage AppM where
+instance MonadIO m => LogMessage ( AppM m ) where
   logMessage l = case l ^. logReason of
     Info  -> logMessageImpl l Info
     Debug -> logMessageImpl l Debug

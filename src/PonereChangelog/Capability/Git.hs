@@ -3,7 +3,6 @@ module PonereChangelog.Capability.Git
   ( ManageGit(..)
   , LatestRefName
   , RefNameBeforeLatest
-  , GitError(..)
   , getLatestRefNameImpl
   , getCommitMsgWithRefImpl
   , getCommitMsgsWithRefImpl
@@ -15,44 +14,46 @@ module PonereChangelog.Capability.Git
   ) where
 
 
-import           Control.Exception      (evaluate)
+import           Control.Exception        (evaluate)
 import           Data.Either
 import           Data.Ord
 import           Import
 -- text
-import qualified Data.Text              as T
+import qualified Data.Text                as T
 -- git
 import           Data.Git
-import qualified Data.Git.Monad         as GitMonad
+import qualified Data.Git.Monad           as GitMonad
 import           Data.Git.Ref
 import           Data.Git.Repository
 import           Data.Git.Storage
 import           Data.Git.Storage.Loose
 import           Data.Git.Types
+-- ponere-changelog
+import           PonereChangelog.Response
 
 class Monad m => ManageGit m where
-  getLatestRef :: m ( Either GitError LatestRefName )
-  getRefNameBeforeLatest :: m ( Either GitError RefNameBeforeLatest )
+  getLatestRef :: m ( Either PonereError LatestRefName )
+  getRefNameBeforeLatest :: m ( Either PonereError RefNameBeforeLatest )
   getCommitMsgWithRef :: Text -> m ( Maybe ByteString )
-  getCommitMsgsWithRef :: Text -> m ( Either GitError [ ByteString ] )
+  getCommitMsgsWithRef :: Text -> m ( Either PonereError [ ByteString ] )
 
 localRepo
   :: MonadIO m
-  => ( Git SHA1 -> IO ( Either GitError a ) )
-  -> m ( Either GitError a )
+  => ( Git SHA1 -> IO ( Either PonereError a ) )
+  -> m ( Either PonereError a )
 localRepo filePath = liftIO $ do
   mFilePath <- findRepoMaybe
   case mFilePath of
-    Nothing -> pure $ Left NoRepoDetected
+    Nothing -> pure $ Left NoGitRepoDetected
     Just _  -> withCurrentRepo filePath
 
-data GitError
-  = NoTagsCreated
-  | NoRepoDetected
-  | NoCommitsFound
-  deriving ( Eq, Show )
+-- data PonereError
+--   = NoTagsCreated
+--   | NoRepoDetected
+--   | NoCommitsFound
+--   deriving ( Eq, Show )
 
-instance Exception GitError
+-- instance Exception PonereError
 
 getAllRefs
   :: MonadIO m
@@ -67,15 +68,15 @@ getAllRefs git = do
       liftIO $ looseEnumerateWithPrefix ( gitRepoPath git ) prefix
 
 -- | retreives all commits with the latest commit first.
-retreiveAllCommits :: MonadIO m => m ( Either GitError [ Commit SHA1 ] )
+retreiveAllCommits :: MonadIO m => m ( Either PonereError [ Commit SHA1 ] )
 retreiveAllCommits = localRepo $ \git -> do
   refs <- getAllRefs git
   commits <- traverse ( ( evaluate =<< ) . getCommitMaybe git ) refs
   pure $ handler ( catMaybes commits )
   where
-    handler :: [ Commit SHA1 ] -> ( Either GitError [ Commit SHA1 ] )
+    handler :: [ Commit SHA1 ] -> ( Either PonereError [ Commit SHA1 ] )
     handler com
-      | null com = Left NoCommitsFound
+      | null com = Left NoGitCommitsFound
       | otherwise = Right $ fromLatestCommits com
 
     -- sorts commits from latest commit
@@ -104,14 +105,14 @@ instance Monoid LatestRefName where
 -- | get the latest ref name from the tag
 getLatestRefNameImpl
   :: ( MonadIO m, ManageGit m )
-  => m ( Either GitError LatestRefName )
+  => m ( Either PonereError LatestRefName )
 getLatestRefNameImpl = localRepo $ \git -> do
   list <- liftIO $ tagList git
   pure $ handler list
   where
-    handler :: Set RefName -> Either GitError LatestRefName
+    handler :: Set RefName -> Either PonereError LatestRefName
     handler l
-      | null l = Left NoTagsCreated
+      | null l = Left NoGitTagsCreated
       | otherwise =  Right . LatestRefName . T.pack . refNameRaw . last . fromList $ toList l
 
 newtype RefNameBeforeLatest = RefNameBeforeLatest Text
@@ -127,14 +128,14 @@ instance Monoid RefNameBeforeLatest where
 -- | gets the ref name before the latest tag.
 getRefNameBeforeLatestImpl
   :: MonadIO m
-  => m ( Either GitError RefNameBeforeLatest )
+  => m ( Either PonereError RefNameBeforeLatest )
 getRefNameBeforeLatestImpl = localRepo $ \git -> do
   list <- liftIO $ tagList git
   pure $ handler list
   where
-    handler :: Set RefName -> Either GitError RefNameBeforeLatest
+    handler :: Set RefName -> Either PonereError RefNameBeforeLatest
     handler l
-      | null l = Left NoTagsCreated
+      | null l = Left NoGitTagsCreated
       -- this drops the items except for the last 2 items in the list.
       -- Then it takes the head of the list by using listToMaybe
       | otherwise = Right
@@ -146,7 +147,7 @@ getRefNameBeforeLatestImpl = localRepo $ \git -> do
 getCommitsWithRefImpl
   :: ( MonadIO m, ManageGit m )
   => Text
-  -> m ( Either GitError [ Commit SHA1 ] )
+  -> m ( Either PonereError [ Commit SHA1 ] )
 getCommitsWithRefImpl ref = do
   commit <- join <$> fmap ( listToMaybe . commitParents ) <$> getLatestCommit ref
   commits <- retreiveAllCommits
@@ -160,7 +161,7 @@ getCommitsWithRefImpl ref = do
 getCommitMsgsWithRefImpl
   :: ( MonadIO m, ManageGit m )
   => Text
-  -> m ( Either GitError [ ByteString ] )
+  -> m ( Either PonereError [ ByteString ] )
 getCommitMsgsWithRefImpl ref =
   ( fmap . fmap ) commitMessage <$> getCommitsWithRefImpl ref
 
@@ -190,9 +191,9 @@ takeWhileInclusive predicate (x:xs) =
   x : if predicate x then takeWhileInclusive predicate xs else []
 
 combineRefs
-  :: Either GitError RefNameBeforeLatest
-  -> Either GitError LatestRefName
-  -> Either GitError ( RefNameBeforeLatest, LatestRefName )
+  :: Either PonereError RefNameBeforeLatest
+  -> Either PonereError LatestRefName
+  -> Either PonereError ( RefNameBeforeLatest, LatestRefName )
 combineRefs refNameBeforeLatest latestRef = do
   refBeforeLatest <- refNameBeforeLatest
   lRef <- latestRef

@@ -1,6 +1,6 @@
 { mkDerivation, ansi-terminal, base, bytestring, file-embed, git
 , microlens, mtl, optparse-applicative, relude, stdenv
-, system-filepath, text, time, transformers
+, system-filepath, text, time, transformers, turtle
 }:
 mkDerivation {
   pname = "ponere-changelog";
@@ -10,7 +10,7 @@ mkDerivation {
   isExecutable = true;
   libraryHaskellDepends = [
     ansi-terminal base bytestring file-embed git microlens mtl
-    optparse-applicative relude system-filepath text time transformers
+    optparse-applicative relude system-filepath text time transformers turtle
   ];
   executableHaskellDepends = [ base ];
   license = "unknown";
